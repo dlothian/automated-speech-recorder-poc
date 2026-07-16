@@ -13,12 +13,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Initialize workflow summary
+        run: |
+          echo "# 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Project:** ${{ inputs.project_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      #
-      # Angular build
-      #
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -26,63 +32,152 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          echo "✅ Dependencies installed" >> $GITHUB_STEP_SUMMARY
 
       - name: Build Angular app
-        run: npm run build
+        id: angular_build
+        run: |
+          npm run build
+          echo "## Angular Build" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Angular build completed successfully" >> $GITHUB_STEP_SUMMARY
 
-      #
-      # Cloudflare setup
-      #
       - name: Install Wrangler
-        run: npm install --global wrangler
+        run: |
+          npm install --global wrangler
+          echo "## Wrangler" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Wrangler installed" >> $GITHUB_STEP_SUMMARY
 
       #
-      # Worker setup
+      # Worker
       #
+
       - name: Generate Worker types
-        working-directory: worker
-        run: wrangler types
-
-      - name: Create D1 database if needed
+        id: worker_types
         working-directory: worker
         run: |
-          wrangler d1 create auth0-angular-db || true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wrangler types
+          echo "## Worker Types" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Worker types generated" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create D1 database and configure Worker
+        working-directory: worker
+        id: create_d1
+        run: |
+          echo "Creating D1 database..."
+
+          OUTPUT=$(wrangler d1 create auth0-angular-db)
+
+          echo "$OUTPUT"
+
+          DATABASE_ID=$(echo "$OUTPUT" | grep "database_id" | sed 's/.*"\(.*\)".*/\1/')
+
+          if [ -z "$DATABASE_ID" ]; then
+            echo "Could not find database ID"
+            exit 1
+          fi
+
+          echo "Database ID: $DATABASE_ID"
+
+          echo "DATABASE_ID=$DATABASE_ID" >> $GITHUB_ENV
+
+          cat > wrangler.generated.toml <<EOF
+          name = "auth0-angular-api"
+          main = "src/index.ts"
+          compatibility_date = "2026-07-16"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "auth0-angular-db"
+          database_id = "$DATABASE_ID"
+          EOF
 
       - name: Apply D1 migrations
+        id: migrations
         working-directory: worker
         run: |
-          wrangler d1 migrations apply auth0-angular-db --remote
+          echo "## D1 Migrations" >> $GITHUB_STEP_SUMMARY
+
+          wrangler d1 migrations apply auth0-angular-db \
+          --remote \
+          --config wrangler.generated.toml | tee migration-output.txt
+
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat migration-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy Worker
+        id: worker_deploy
         working-directory: worker
         run: |
-          wrangler deploy
+          echo "## Worker Deployment" >> $GITHUB_STEP_SUMMARY
+
+          wrangler deploy --config wrangler.generated.toml | tee worker-output.txt
+
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat worker-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       #
-      # Pages setup
+      # Pages
       #
+
       - name: Create Cloudflare Pages project if needed
+        id: pages_create
+        continue-on-error: true
         run: |
+          echo "## Pages Project Creation" >> $GITHUB_STEP_SUMMARY
+
           wrangler pages project create "${{ inputs.project_name }}" \
-            --production-branch main || true
+            --production-branch main | tee pages-create-output.txt || true
+
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat pages-create-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy Angular to Cloudflare Pages
+        id: pages_deploy
         run: |
-          wrangler pages deploy dist/auth0-angular/browser \
-            --project-name "${{ inputs.project_name }}"
+          echo "## Pages Deployment" >> $GITHUB_STEP_SUMMARY
+
+          wrangler pages deploy YOUR_ANGULAR_DIST_FOLDER \
+            --project-name "${{ inputs.project_name }}" | tee pages-output.txt
+
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat pages-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      #
+      # Final summary even if something failed
+      #
+
+      - name: Final deployment summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Final Status" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Deployment completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Deployment failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Check the failed step logs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
