@@ -6,7 +6,7 @@ on:
       project_name:
         description: 'Cloudflare Pages project name'
         required: true
-        default: 'my-auth0-test'
+        default: 'auth0-angular'
 
 jobs:
   deploy:
