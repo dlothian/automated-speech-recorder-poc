@@ -160,12 +160,13 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Deploy Angular to Cloudflare Pages
         id: pages_deploy
         run: |
           echo "## Pages Deployment" >> $GITHUB_STEP_SUMMARY
 
-          wrangler pages deploy YOUR_ANGULAR_DIST_FOLDER \
+          wrangler pages deploy dist/auth0-angular/browser \
             --project-name "${{ inputs.project_name }}" | tee pages-output.txt
 
           echo '```' >> $GITHUB_STEP_SUMMARY
