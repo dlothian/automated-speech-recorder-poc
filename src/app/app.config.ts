@@ -6,6 +6,7 @@ import { routes } from './app.routes';
 /* highlight-start import-provide-auth0 */
 import { provideAuth0 } from '@auth0/auth0-angular';
 /* highlight-end import-provide-auth0 */
+import { provideHttpClient } from '@angular/common/http';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -19,6 +20,7 @@ export const appConfig: ApplicationConfig = {
         redirect_uri: window.location.origin,
       },
     }),
+    provideHttpClient(),
     /* highlight-end provider-config */
   ],
 };
