@@ -61,24 +61,41 @@ jobs:
           echo "## Worker Types" >> $GITHUB_STEP_SUMMARY
           echo "✅ Worker types generated" >> $GITHUB_STEP_SUMMARY
 
-      - name: Create D1 database and configure Worker
+      - name: Create or reuse D1 database
+        id: d1_database
         working-directory: worker
-        id: create_d1
         run: |
-          echo "Creating D1 database..."
+          DATABASE_NAME="auth0-angular-db"
 
-          OUTPUT=$(wrangler d1 create auth0-angular-db)
+          echo "## D1 Database Setup" >> $GITHUB_STEP_SUMMARY
 
-          echo "$OUTPUT"
+          echo "Checking if D1 database exists: $DATABASE_NAME"
 
-          DATABASE_ID=$(echo "$OUTPUT" | grep "database_id" | sed 's/.*"\(.*\)".*/\1/')
+          DATABASE_ID=$(wrangler d1 list --json | jq -r ".[] | select(.name==\"$DATABASE_NAME\") | .uuid")
 
-          if [ -z "$DATABASE_ID" ]; then
-            echo "Could not find database ID"
-            exit 1
+          if [ -n "$DATABASE_ID" ] && [ "$DATABASE_ID" != "null" ]; then
+            echo "✅ D1 database already exists"
+            echo "Using existing database ID: $DATABASE_ID"
+
+            echo "D1 database already exists. Reusing it." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Creating D1 database..."
+
+            OUTPUT=$(wrangler d1 create "$DATABASE_NAME")
+
+            echo "$OUTPUT"
+
+            DATABASE_ID=$(echo "$OUTPUT" | grep "database_id" | sed 's/.*"\(.*\)".*/\1/')
+
+            if [ -z "$DATABASE_ID" ]; then
+              echo "❌ Could not determine database ID"
+              exit 1
+            fi
+
+            echo "Created database ID: $DATABASE_ID"
+
+            echo "Created new D1 database." >> $GITHUB_STEP_SUMMARY
           fi
-
-          echo "Database ID: $DATABASE_ID"
 
           echo "DATABASE_ID=$DATABASE_ID" >> $GITHUB_ENV
 
@@ -89,9 +106,12 @@ jobs:
 
           [[d1_databases]]
           binding = "DB"
-          database_name = "auth0-angular-db"
+          database_name = "$DATABASE_NAME"
           database_id = "$DATABASE_ID"
           EOF
+
+              echo "Generated Worker config:"
+              cat wrangler.generated.toml
 
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
