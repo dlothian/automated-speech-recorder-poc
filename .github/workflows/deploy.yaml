@@ -135,23 +135,31 @@ jobs:
       # Pages
       #
 
-      - name: Create Cloudflare Pages project if needed
-        id: pages_create
-        continue-on-error: true
+      - name: Create or reuse Cloudflare Pages project
+        id: pages_project
         run: |
-          echo "## Pages Project Creation" >> $GITHUB_STEP_SUMMARY
+          echo "## Pages Project Setup" >> $GITHUB_STEP_SUMMARY
 
-          wrangler pages project create "${{ inputs.project_name }}" \
-            --production-branch main | tee pages-create-output.txt || true
+          PROJECT_NAME="${{ inputs.project_name }}"
 
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat pages-create-output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "Checking if Pages project exists: $PROJECT_NAME"
+
+          if wrangler pages project list | grep -q "$PROJECT_NAME"; then
+            echo "✅ Pages project already exists"
+            echo "Project '$PROJECT_NAME' already exists. Will deploy updates." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Creating Pages project..."
+            
+            wrangler pages project create "$PROJECT_NAME" \
+              --production-branch main
+
+            echo "✅ Pages project created"
+            echo "Created new Pages project '$PROJECT_NAME'." >> $GITHUB_STEP_SUMMARY
+          fi
 
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
       - name: Deploy Angular to Cloudflare Pages
         id: pages_deploy
         run: |
