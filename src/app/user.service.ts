@@ -6,7 +6,7 @@ import { HttpClient } from '@angular/common/http';
 })
 export class UserService {
 
-    private apiUrl = 'https://auth0-angular-api.delaney-lothian.workers.dev/';
+    private apiUrl = 'https://auth0-angular-api.delaney-lothian.workers.dev';
 
     constructor(private http: HttpClient) { }
 
