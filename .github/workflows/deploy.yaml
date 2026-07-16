@@ -30,6 +30,9 @@ jobs:
       - name: Install Wrangler
         run: npm install --global wrangler
 
+      - name: Generate Cloudflare Worker types
+        run: wrangler types
+
       - name: Create Cloudflare Pages project if needed
         run: |
           wrangler pages project create "${{ inputs.project_name }}" \

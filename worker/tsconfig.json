@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": [
+    "src",
+    "worker-configuration.d.ts"
+  ]
+}
