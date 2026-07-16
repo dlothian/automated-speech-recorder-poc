@@ -1,0 +1,46 @@
+@if (auth.isLoading$ | async) {
+
+<div>Loading...</div>
+
+} @else {
+
+@if ((auth.isAuthenticated$ | async) && (auth.user$ | async); as user) {
+
+<h1>Welcome!</h1>
+<p>You are logged in as {{ user.email }}</p>
+
+<button routerLink="/protected">
+  Protected Page
+</button>
+
+<button
+  (click)="auth.logout({ logoutParams: { returnTo: window.location.origin } })">
+  Logout
+</button>
+
+} @else {
+
+@if (route.snapshot.queryParamMap.get('error') === 'logged_out') {
+<p>You are logged out. Please log in to access that page.</p>
+}
+
+<h1>Please log in</h1>
+
+<button
+  (click)="auth.loginWithRedirect({ authorizationParams: { screen_hint: 'signup' } })">
+  Sign Up
+</button>
+
+<button (click)="auth.loginWithRedirect()">
+  Log In
+</button>
+
+<button routerLink="/protected">
+  Try Protected Page
+</button>
+
+}
+
+}
+
+<router-outlet />

@@ -1,0 +1,26 @@
+@if (auth.user$ | async; as user) {
+
+<h1>Protected Page - You should not see this if not logged in </h1>
+
+<h2>User Information</h2>
+
+<p><strong>Name:</strong> {{ user.name }}</p>
+
+<p><strong>Email:</strong> {{ user.email }}</p>
+
+@if (user.picture) {
+<img
+    [src]="user.picture"
+    alt="Profile picture"
+    width="100">
+}
+
+<h2>Raw Auth0 Profile</h2>
+
+<pre>{{ user | json }}</pre>
+
+} @else {
+
+<p>Loading user information...</p>
+
+}
