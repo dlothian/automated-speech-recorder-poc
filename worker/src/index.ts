@@ -1,5 +1,5 @@
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "https://your-site.pages.dev",
+    "Access-Control-Allow-Origin": "https://auth0-angular.pages.dev/",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
 };
