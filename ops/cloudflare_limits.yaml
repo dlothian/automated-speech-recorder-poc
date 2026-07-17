@@ -1,0 +1,78 @@
+# Cloudflare Free Plan Monitoring Configuration
+#
+# This file contains quota thresholds and resource identifiers.
+# Do NOT store API tokens or secrets here.
+
+cloudflare:
+  # Your Cloudflare account ID.
+  # Prefer setting this through an environment variable in CI:
+  # CLOUDFLARE_ACCOUNT_ID
+  account_id: 'YOUR_ACCOUNT_ID'
+
+  # Pages project to monitor
+  pages:
+    # Free plan limit
+    builds:
+      monthly_limit: 500
+      warning_percent: 80
+
+  # Workers monitoring
+  workers:
+    # Free plan request allowance
+    requests:
+      daily_limit: 100000
+      warning_percent: 80
+
+    # Free plan CPU limit
+    cpu:
+      milliseconds_per_request_limit: 10
+      warning_percent: 80
+
+  # D1 database monitoring
+  d1:
+    # Free plan limits
+    rows:
+      reads_daily_limit: 5000000
+      writes_daily_limit: 100000
+      warning_percent: 80
+
+    storage:
+      gb_limit: 5
+      warning_percent: 80
+
+  # R2 object storage monitoring
+  r2:
+    storage:
+      gb_limit: 10
+      warning_percent: 80
+
+    operations:
+      class_a_monthly_limit: 1000000
+      class_b_monthly_limit: 10000000
+      warning_percent: 80
+
+# How often the monitoring script runs
+monitoring:
+  timezone: 'UTC'
+
+  # Used when generating reports
+  report:
+    filename: 'cloudflare_quota_report.md'
+
+  # Keep historical data if desired
+  history:
+    enabled: true
+    filename: 'cloudflare_quota_history.json'
+
+# Optional: project-specific notes
+project:
+  name: 'Speech Recorder Platform'
+
+  tracked_resources:
+    - pages_builds
+    - workers_requests
+    - d1_reads
+    - d1_writes
+    - d1_storage
+    - r2_storage
+    - r2_operations
