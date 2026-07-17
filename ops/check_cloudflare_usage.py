@@ -176,9 +176,9 @@ def pages_usage(account_id):
 def workers_usage(account_id):
 
     query = """
-    query($accountTag: string!, $datetimeStart: Time!, $datetimeEnd: Time!) {
+    query($account_id: string!, $datetimeStart: Time!, $datetimeEnd: Time!) {
       viewer {
-        accounts(filter: {accountTag: $accountTag}) {
+        accounts(filter: {accountTag: $account_id}) {
           workersInvocationsAdaptive(
             limit: 1000,
             filter: {
