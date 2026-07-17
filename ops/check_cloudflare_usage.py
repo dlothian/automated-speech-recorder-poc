@@ -176,27 +176,27 @@ def pages_usage(account_id):
 def workers_usage(account_id):
 
     query = """
-
     query($accountTag: string!, $datetimeStart: Time!, $datetimeEnd: Time!) {
-    viewer {
+      viewer {
         accounts(filter: {accountTag: $accountTag}) {
-        workersInvocationsAdaptive(
-            limit: 1,
+          workersInvocationsAdaptive(
+            limit: 1000,
             filter: {
-            datetime_geq: $datetimeStart,
-            datetime_leq: $datetimeEnd
+              datetime_geq: $datetimeStart,
+              datetime_leq: $datetimeEnd
             }
-        ) {
+          ) {
             sum {
-            requests
-            cpuTimeMs
+              requests
             }
+            quantiles {
+              cpuTimeP50
+            }
+          }
         }
-        }
-    }
+      }
     }
     """
-
 
     now = datetime.now(timezone.utc)
 
@@ -216,24 +216,37 @@ def workers_usage(account_id):
         },
     )
 
-    account = (
-        data["viewer"]["accounts"][0]
-    )
+    account = data["viewer"]["accounts"][0]
 
-    usage = (
-        account["workersInvocationsAdaptive"]
-        ["sum"]
-    )
+    rows = account["workersInvocationsAdaptive"]
+
+    total_requests = 0
+    estimated_cpu_ms = 0
+
+    for row in rows:
+
+        requests = (
+            row.get("sum", {})
+            .get("requests", 0)
+            or 0
+        )
+
+        cpu_p50 = (
+            row.get("quantiles", {})
+            .get("cpuTimeP50", 0)
+            or 0
+        )
+
+        total_requests += requests
+
+        estimated_cpu_ms += (
+            requests * cpu_p50
+        )
 
     return {
-        "requests": usage.get(
-            "requests",
-            0,
-        ),
-        "cpu_ms": usage.get(
-            "cpuTime",
-            0,
-        ),
+        "requests": total_requests,
+        "cpu_ms": estimated_cpu_ms,
+        "cpu_estimate_method": "P50 CPU time × requests",
     }
 
 
@@ -365,6 +378,12 @@ def generate_report(config, usage):
         f"\nCPU ms: "
         f"{usage['workers']['cpu_ms']}"
     )
+
+    lines.append(
+        f"\nEstimation Method: "
+        f"{usage['workers']['cpu_estimate_method']}"
+    )
+
 
     # D1
 
