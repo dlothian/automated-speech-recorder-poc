@@ -46,6 +46,43 @@ export default {
 
         }
 
+        if (request.method === "POST" && new URL(request.url).pathname === "/audio") {
+
+            const formData = await request.formData();
+
+            const file = formData.get("file");
+
+            if (!(file instanceof File)) {
+                return new Response("Missing audio file", {
+                    status: 400,
+                    headers: corsHeaders
+                });
+            }
+
+            const filename = `${crypto.randomUUID()}.webm`;
+
+            await env.AUDIO_BUCKET.put(
+                filename,
+                file.stream(),
+                {
+                    httpMetadata: {
+                        contentType: file.type
+                    }
+                }
+            );
+
+            return Response.json(
+                {
+                    success: true,
+                    filename
+                },
+                {
+                    headers: corsHeaders
+                }
+            );
+        }
+
+
         return new Response("Not found", {
             status: 404,
             headers: corsHeaders,
