@@ -1,5 +1,18 @@
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "https://your-site.pages.dev",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+};
+
 export default {
     async fetch(request: Request, env: Env) {
+
+        if (request.method === "OPTIONS") {
+            return new Response(null, {
+                status: 204,
+                headers: corsHeaders,
+            });
+        }
 
         if (request.method === "POST" && new URL(request.url).pathname === "/users") {
 
