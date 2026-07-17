@@ -176,24 +176,27 @@ def pages_usage(account_id):
 def workers_usage(account_id):
 
     query = """
+
     query($accountTag: string!, $datetimeStart: Time!, $datetimeEnd: Time!) {
-      viewer {
+    viewer {
         accounts(filter: {accountTag: $accountTag}) {
-          workersInvocationsAdaptive(
+        workersInvocationsAdaptive(
+            limit: 1,
             filter: {
-              datetime_geq: $datetimeStart,
-              datetime_leq: $datetimeEnd
+            datetime_geq: $datetimeStart,
+            datetime_leq: $datetimeEnd
             }
-          ) {
+        ) {
             sum {
-              requests
-              cpuTime
+            requests
+            cpuTime
             }
-          }
         }
-      }
+        }
+    }
     }
     """
+
 
     now = datetime.now(timezone.utc)
 
