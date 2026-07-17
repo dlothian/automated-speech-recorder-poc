@@ -189,7 +189,7 @@ def workers_usage(account_id):
         ) {
             sum {
             requests
-            cpuTime
+            cpuTimeMs
             }
         }
         }
