@@ -1,5 +1,5 @@
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "https://auth0-angular.pages.dev/",
+    "Access-Control-Allow-Origin": "https://auth0-angular.pages.dev",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
 };
@@ -37,11 +37,19 @@ export default {
                 )
                 .run();
 
-            return Response.json({
-                success: true
-            });
+            return Response.json(
+                { success: true },
+                {
+                    headers: corsHeaders,
+                }
+            );
+
         }
 
-        return new Response("Not found", { status: 404 });
+        return new Response("Not found", {
+            status: 404,
+            headers: corsHeaders,
+        });
+
     }
 };
