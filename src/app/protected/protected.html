@@ -19,6 +19,20 @@
 
 <pre>{{ user | json }}</pre>
 
+<div class="recorder">
+
+    <h2>Upload an audio file</h3>
+
+    <input
+        type="file"
+        accept="audio/*"
+        (change)="onFileSelected($event)" />
+
+    <p *ngIf="selectedFile">
+        Selected: {{ selectedFile.name }}
+    </p>
+</div>
+
 } @else {
 
 <p>Loading user information...</p>

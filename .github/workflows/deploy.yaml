@@ -99,20 +99,6 @@ jobs:
 
           echo "DATABASE_ID=$DATABASE_ID" >> $GITHUB_ENV
 
-          cat > wrangler.generated.toml <<EOF
-          name = "auth0-angular-api"
-          main = "src/index.ts"
-          compatibility_date = "2026-07-16"
-
-          [[d1_databases]]
-          binding = "DB"
-          database_name = "$DATABASE_NAME"
-          database_id = "$DATABASE_ID"
-          EOF
-
-              echo "Generated Worker config:"
-              cat wrangler.generated.toml
-
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -134,6 +120,62 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Create or reuse R2 bucket
+        id: r2_bucket
+        working-directory: worker
+        run: |
+          BUCKET_NAME="auth0-angular-audio"
+
+          echo "## R2 Storage Setup" >> $GITHUB_STEP_SUMMARY
+
+          echo "Checking if R2 bucket exists: $BUCKET_NAME"
+
+          BUCKET_EXISTS=$(wrangler r2 bucket list --json | jq -r ".[] | select(.name==\"$BUCKET_NAME\") | .name")
+
+          if [ "$BUCKET_EXISTS" = "$BUCKET_NAME" ]; then
+            echo "✅ R2 bucket already exists"
+            echo "Using existing bucket: $BUCKET_NAME" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Creating R2 bucket..."
+
+            wrangler r2 bucket create "$BUCKET_NAME"
+
+            echo "✅ R2 bucket created"
+            echo "Created new R2 bucket: $BUCKET_NAME" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "R2_BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Generate Wrangler configuration
+        id: generate_wrangler_config
+        working-directory: worker
+        run: |
+          echo "## Wrangler Configuration" >> $GITHUB_STEP_SUMMARY
+
+          cat > wrangler.generated.toml <<EOF
+          name = "auth0-angular-api"
+          main = "src/index.ts"
+          compatibility_date = "2026-07-16"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "$DATABASE_NAME"
+          database_id = "$DATABASE_ID"
+
+          [[r2_buckets]]
+          binding = "AUDIO_BUCKET"
+          bucket_name = "$R2_BUCKET_NAME"
+          EOF
+
+          echo "Generated Worker configuration:"
+          cat wrangler.generated.toml
+
+          echo "✅ Wrangler config generated" >> $GITHUB_STEP_SUMMARY
 
       - name: Deploy Worker
         id: worker_deploy
