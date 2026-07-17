@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
 import { AuthService } from '@auth0/auth0-angular';
-import { AsyncPipe, JsonPipe } from '@angular/common';
+import { AsyncPipe, JsonPipe, CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-protected',
-  imports: [AsyncPipe, JsonPipe],
+  imports: [AsyncPipe, JsonPipe, CommonModule],
   templateUrl: './protected.html'
 })
 export class ProtectedComponent {
