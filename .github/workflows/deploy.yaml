@@ -103,24 +103,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Apply D1 migrations
-        id: migrations
-        working-directory: worker
-        run: |
-          echo "## D1 Migrations" >> $GITHUB_STEP_SUMMARY
-
-          wrangler d1 migrations apply auth0-angular-db \
-          --remote \
-          --config wrangler.generated.toml | tee migration-output.txt
-
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat migration-output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
       - name: Create or reuse R2 bucket
         id: r2_bucket
         working-directory: worker
@@ -166,10 +148,15 @@ jobs:
         run: |
           echo "## Wrangler Configuration" >> $GITHUB_STEP_SUMMARY
 
+          PROJECT_NAME="${{ inputs.project_name }}"
+
           cat > wrangler.generated.toml <<EOF
           name = "auth0-angular-api"
           main = "src/index.ts"
+          account_id = "$CLOUDFLARE_ACCOUNT_ID"
           compatibility_date = "2026-07-16"
+
+          pages_project_name = "$PROJECT_NAME"
 
           [[d1_databases]]
           binding = "DB"
@@ -181,10 +168,29 @@ jobs:
           bucket_name = "$R2_BUCKET_NAME"
           EOF
 
+
           echo "Generated Worker configuration:"
           cat wrangler.generated.toml
 
           echo "✅ Wrangler config generated" >> $GITHUB_STEP_SUMMARY
+
+      - name: Apply D1 migrations
+        id: migrations
+        working-directory: worker
+        run: |
+          echo "## D1 Migrations" >> $GITHUB_STEP_SUMMARY
+
+          wrangler d1 migrations apply auth0-angular-db \
+          --remote \
+          --config wrangler.generated.toml | tee migration-output.txt
+
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat migration-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy Worker
         id: worker_deploy
@@ -247,6 +253,46 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Generate infrastructure metadata
+        id: infrastructure_metadata
+        working-directory: worker
+        run: |
+          echo "## Infrastructure Metadata" >> $GITHUB_STEP_SUMMARY
+
+          cat > infrastructure.toml <<EOF
+          # Auto-generated infrastructure metadata
+          # Safe to commit - contains resource names and bindings only
+
+          [worker]
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "$DATABASE_NAME"
+
+          [[r2_buckets]]
+          binding = "AUDIO_BUCKET"
+          bucket_name = "$R2_BUCKET_NAME"
+          EOF
+
+                    echo "Generated infrastructure.toml:"
+                    cat infrastructure.toml
+
+                    echo "✅ Infrastructure metadata generated" >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit infrastructure metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add worker/infrastructure.toml
+
+          if git diff --cached --quiet; then
+            echo "No infrastructure changes to commit"
+          else
+            git commit -m "Update infrastructure metadata"
+            git push
+          fi
 
       #
       # Final summary even if something failed
