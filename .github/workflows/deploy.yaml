@@ -131,19 +131,26 @@ jobs:
 
           echo "Checking if R2 bucket exists: $BUCKET_NAME"
 
-          BUCKET_EXISTS=$(wrangler r2 bucket list --json | jq -r ".[] | select(.name==\"$BUCKET_NAME\") | .name")
+          BUCKET_EXISTS=$(wrangler r2 bucket list | grep -w "$BUCKET_NAME" || true)
 
-          if [ "$BUCKET_EXISTS" = "$BUCKET_NAME" ]; then
-            echo "✅ R2 bucket already exists"
-            echo "Using existing bucket: $BUCKET_NAME" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Creating R2 bucket..."
 
-            wrangler r2 bucket create "$BUCKET_NAME"
+          if [ -n "$BUCKET_EXISTS" ]; then
+            echo "Checking if R2 bucket exists: $BUCKET_NAME"
 
-            echo "✅ R2 bucket created"
-            echo "Created new R2 bucket: $BUCKET_NAME" >> $GITHUB_STEP_SUMMARY
+            BUCKET_EXISTS=$(wrangler r2 bucket list | grep -w "$BUCKET_NAME" || true)
+
+            if [ -n "$BUCKET_EXISTS" ]; then
+              echo "✅ R2 bucket already exists"
+              echo "Using existing bucket: $BUCKET_NAME" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "Creating R2 bucket..."
+
+              wrangler r2 bucket create "$BUCKET_NAME"
+
+              echo "✅ R2 bucket created"
+              echo "Created new R2 bucket: $BUCKET_NAME" >> $GITHUB_STEP_SUMMARY
           fi
+
 
           echo "R2_BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
 
