@@ -149,6 +149,8 @@ jobs:
 
               echo "✅ R2 bucket created"
               echo "Created new R2 bucket: $BUCKET_NAME" >> $GITHUB_STEP_SUMMARY
+
+            fi
           fi
 
 
