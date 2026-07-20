@@ -12,6 +12,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      PROJECT_NAME: ${{ inputs.project_name }}
+
+      # Derived resource names
+      WORKER_NAME: ${{ inputs.project_name }}-api
+      DATABASE_NAME: ${{ inputs.project_name }}-db
+      BUCKET_NAME: ${{ inputs.project_name }}-audio
+
     steps:
       - name: Initialize workflow summary
         run: |
@@ -65,7 +73,6 @@ jobs:
         id: d1_database
         working-directory: worker
         run: |
-          DATABASE_NAME="auth0-angular-db"
 
           echo "## D1 Database Setup" >> $GITHUB_STEP_SUMMARY
 
@@ -107,7 +114,6 @@ jobs:
         id: r2_bucket
         working-directory: worker
         run: |
-          BUCKET_NAME="auth0-angular-audio"
 
           echo "## R2 Storage Setup" >> $GITHUB_STEP_SUMMARY
 
@@ -135,9 +141,6 @@ jobs:
             fi
           fi
 
-
-          echo "R2_BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
-
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -148,15 +151,13 @@ jobs:
         run: |
           echo "## Wrangler Configuration" >> $GITHUB_STEP_SUMMARY
 
-          PROJECT_NAME="${{ inputs.project_name }}"
 
           cat > wrangler.generated.toml <<EOF
-          name = "auth0-angular-api"
+          name = "$WORKER_NAME"
           main = "src/index.ts"
           account_id = "$CLOUDFLARE_ACCOUNT_ID"
           compatibility_date = "2026-07-16"
 
-          pages_project_name = "$PROJECT_NAME"
 
           [[d1_databases]]
           binding = "DB"
@@ -165,7 +166,7 @@ jobs:
 
           [[r2_buckets]]
           binding = "AUDIO_BUCKET"
-          bucket_name = "$R2_BUCKET_NAME"
+          bucket_name = "$BUCKET_NAME"
           EOF
 
 
@@ -174,13 +175,17 @@ jobs:
 
           echo "✅ Wrangler config generated" >> $GITHUB_STEP_SUMMARY
 
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Apply D1 migrations
         id: migrations
         working-directory: worker
         run: |
           echo "## D1 Migrations" >> $GITHUB_STEP_SUMMARY
 
-          wrangler d1 migrations apply auth0-angular-db \
+          wrangler d1 migrations apply "$DATABASE_NAME" \
           --remote \
           --config wrangler.generated.toml | tee migration-output.txt
 
